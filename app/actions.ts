@@ -1,5 +1,7 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
+
 import { createServiceClient } from "@/lib/supabase/server"
 import type { ExpenseFormValues } from "@/components/expense-form"
 
@@ -23,4 +25,42 @@ export async function createExpense(values: ExpenseFormValues) {
   if (error) {
     throw new Error(error.message)
   }
+
+  revalidatePath("/")
+}
+
+export type Expense = {
+  id: string
+  amount: number
+  itemName: string
+  category: string
+  rating: "good" | "neutral" | "bad"
+  paidAt: string
+  memo: string | null
+}
+
+export async function getTodayExpenses(): Promise<Expense[]> {
+  const supabase = createServiceClient()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("id, amount, item_name, category, rating, paid_at, memo")
+    .eq("user_id", TEMP_USER_ID)
+    .eq("paid_at", today)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    amount: row.amount,
+    itemName: row.item_name,
+    category: row.category,
+    rating: row.rating,
+    paidAt: row.paid_at,
+    memo: row.memo,
+  }))
 }
