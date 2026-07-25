@@ -2,6 +2,7 @@
 
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import * as z from "zod"
 
 import { Button } from "@/components/ui/button"
@@ -55,7 +56,7 @@ function nowForDateInput() {
 export function ExpenseForm({
   onSubmit,
 }: {
-  onSubmit?: (values: ExpenseFormValues) => void
+  onSubmit?: (values: ExpenseFormValues) => Promise<void>
 }) {
   const form = useForm<ExpenseFormInput, unknown, ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
@@ -69,16 +70,23 @@ export function ExpenseForm({
     },
   })
 
-  function handleSubmit(values: ExpenseFormValues) {
-    onSubmit?.(values)
-    form.reset({
-      amount: 0,
-      itemName: "",
-      category: "",
-      rating: undefined,
-      paidAt: nowForDateInput(),
-      memo: "",
-    })
+  async function handleSubmit(values: ExpenseFormValues) {
+    try {
+      await onSubmit?.(values)
+      form.reset({
+        amount: 0,
+        itemName: "",
+        category: "",
+        rating: undefined,
+        paidAt: nowForDateInput(),
+        memo: "",
+      })
+      toast.success("지출을 기록했어요.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "저장에 실패했어요."
+      )
+    }
   }
 
   return (
@@ -202,7 +210,9 @@ export function ExpenseForm({
           )}
         />
 
-        <Button type="submit">기록하기</Button>
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          기록하기
+        </Button>
       </FieldGroup>
     </form>
   )
